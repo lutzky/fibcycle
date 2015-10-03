@@ -1,16 +1,69 @@
-// Package FibCycle provides tools for analzying cycles in modular fibonacci
+// Package fibcycle provides tools for analzying cycles in modular fibonacci
 // sequences.
-
 package fibcycle
 
-// FibState represents a fibonacci sequence state.
+import "fmt"
+
+// FibState represents a Fibonacci sequence state.
 type FibState struct {
-	A, B int
+	state  uint64
+	base   uint64
+	length uint
+}
+
+func (fs FibState) sum() uint64 {
+	sum := uint64(0)
+	for i := uint(0); i < fs.length; i++ {
+		sum += (fs.state % fs.base)
+		fs.state /= fs.base
+	}
+	return sum
+}
+
+// NewFibState creates a Fibonacci state. For "last decimal digit of the classic
+// Fibonacci series", use NewFibState([0,1],10).
+func NewFibState(state []uint, base uint64) FibState {
+	result := FibState{
+		base:   base,
+		length: uint(len(state)),
+	}
+	for _, x := range state {
+		result.state *= base
+		result.state += uint64(x)
+	}
+	return result
+}
+
+func pow(x uint64, y uint) uint64 {
+	if y == 0 {
+		return 1
+	}
+	result := uint64(1)
+	for i := uint(0); i < y; i++ {
+		result *= x
+	}
+	return result
 }
 
 // Next gets the next state in the fibonacci sequence
 func (fs FibState) Next() FibState {
-	return FibState{fs.B, (fs.A + fs.B) % 10}
+	sum := fs.sum()
+	fs.state %= pow(fs.base, fs.length-1)
+	fs.state *= fs.base
+	fs.state += sum % fs.base
+	return fs
+}
+
+func (fs FibState) String() string {
+	// TODO(lutzky): This only makes sense if fs.base == 10
+	return fmt.Sprint(fs.state)
+}
+
+// Increment sets fs to the next possible FibState, with no relation to the
+// Fibonacci rule.
+func (fs *FibState) Increment() {
+	// The fs.state representation makes this particularly simple.
+	fs.state++
 }
 
 // FibGen returns a channel which will return an infinite sequence of FibStates,
@@ -31,8 +84,8 @@ func FibGen(initial FibState) chan FibState {
 }
 
 // Equals returns true iff fs == rhs
-func (fs FibState) Equals(rhs FibState) bool {
-	return fs.A == rhs.A && fs.B == rhs.B
+func (fs *FibState) Equals(rhs *FibState) bool {
+	return fs.state == rhs.state && fs.base == rhs.base && fs.length == rhs.length
 }
 
 // FindCycle returns the cycle length of fs, and the set (map->bool) of states
@@ -44,25 +97,24 @@ func (fs FibState) FindCycle() (uint, map[FibState]bool) {
 	for i := uint(1); ; i++ {
 		state := <-c
 		found[state] = true
-		if state.Equals(fs) {
+		if state.Equals(&fs) {
 			return i, found
 		}
 	}
 }
 
-// FirstUnused returns the first unused state in used, ignoring {0 0}
+// FirstUnused returns the first unused state in used, ignoring the zero-state.
+// If no unused states are found, the zero-state is returned.
 func FirstUnused(used map[FibState]bool) FibState {
-	state := FibState{1, 0}
+	state := NewFibState([]uint{0, 0}, 10)
 
-	for !state.Equals(FibState{9, 9}) {
+	end := NewFibState([]uint{9, 9}, 10)
+
+	for !state.Equals(&end) {
+		state.Increment()
 		if !used[state] {
 			return state
 		}
-		state.A++
-		if state.A == 10 {
-			state.B++
-			state.A = 0
-		}
 	}
-	return FibState{-1, -1}
+	return FibState{}
 }
