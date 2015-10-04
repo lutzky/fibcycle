@@ -71,3 +71,25 @@ func TestFirstUnused(t *testing.T) {
 		}
 	}
 }
+
+func TestString(t *testing.T) {
+	testCases := []struct {
+		state []uint
+		base  uint64
+		want  string
+	}{
+		{[]uint{1, 1}, 10, "11"},
+		{[]uint{2, 1}, 10, "21"},
+		{[]uint{0, 1}, 10, "01"},
+		{[]uint{3}, 10, "3"},
+		{[]uint{0x9, 0xa, 0xb}, 16, "9ab"},
+	}
+
+	for _, tc := range testCases {
+		fs := NewFibState(tc.state, tc.base)
+		got := fs.String()
+		if got != tc.want {
+			t.Errorf("NewFibState(%d, %d).String() = %q; want %q", tc.state, tc.base, got, tc.want)
+		}
+	}
+}

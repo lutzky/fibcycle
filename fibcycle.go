@@ -2,7 +2,10 @@
 // sequences.
 package fibcycle
 
-import "fmt"
+import (
+	"bytes"
+	"fmt"
+)
 
 // FibState represents a Fibonacci sequence state.
 type FibState struct {
@@ -55,8 +58,13 @@ func (fs FibState) Next() FibState {
 }
 
 func (fs FibState) String() string {
-	// TODO(lutzky): This only makes sense if fs.base == 10
-	return fmt.Sprint(fs.state)
+	var buf bytes.Buffer
+	for i := fs.length - 1; i > 0; i-- {
+		x := pow(fs.base, i)
+		fmt.Fprintf(&buf, "%x", (fs.state/x)%fs.base)
+	}
+	fmt.Fprintf(&buf, "%x", fs.state%fs.base)
+	return buf.String()
 }
 
 // Increment sets fs to the next possible FibState, with no relation to the
